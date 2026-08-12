@@ -1,2 +1,16 @@
 # AI 
 AGENTS.md
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# .NET build
+**/bin/
+**/obj/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
