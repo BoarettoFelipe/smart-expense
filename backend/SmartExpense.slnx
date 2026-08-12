@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="src/SmartExpense.Api/SmartExpense.Api.csproj" Id="4328b03b-8b2a-4ffb-81a3-eee0a60c0d37" />
+  <Project Path="src/SmartExpense.Application/SmartExpense.Application.csproj" Id="ca664e72-367e-42f1-bc31-3c65e73e3bc2" />
+  <Project Path="src/SmartExpense.Domain/SmartExpense.Domain.csproj" Id="9f254389-f164-49be-b89e-e4fe0d825b50" />
+  <Project Path="src/SmartExpense.Infrastructure/SmartExpense.Infrastructure.csproj" Id="deec110f-4856-4342-9647-a8533ddf729e" />
+  <Project Path="tests/SmartExpense.Tests/SmartExpense.Tests.csproj" Id="f906a915-fd1e-436e-bdec-db9622c970dd" />
+</Solution>
