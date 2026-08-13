@@ -4,13 +4,37 @@ namespace SmartExpense.Domain.Entities;
 
 public class Category
 {
-    public Guid Id { get; set; }
+    public Category(
+        Guid id,
+        string name,
+        TransactionType type,
+        Guid userId,
+        DateTimeOffset createdAt)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Name must not be empty or whitespace.", nameof(name));
+        }
 
-    public string Name { get; set; } = string.Empty;
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("User ID must not be empty.", nameof(userId));
+        }
 
-    public TransactionType Type { get; set; }
+        Id = id;
+        Name = name;
+        Type = type;
+        UserId = userId;
+        CreatedAt = createdAt;
+    }
 
-    public Guid UserId { get; set; }
+    public Guid Id { get; private set; }
 
-    public DateTimeOffset CreatedAt { get; set; }
+    public string Name { get; private set; }
+
+    public TransactionType Type { get; private set; }
+
+    public Guid UserId { get; private set; }
+
+    public DateTimeOffset CreatedAt { get; private set; }
 }

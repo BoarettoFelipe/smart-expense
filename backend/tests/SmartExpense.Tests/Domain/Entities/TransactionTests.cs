@@ -1,0 +1,102 @@
+using SmartExpense.Domain.Entities;
+using SmartExpense.Domain.Enums;
+
+namespace SmartExpense.Tests.Domain.Entities;
+
+public class TransactionTests
+{
+    private static readonly Guid TransactionId = Guid.NewGuid();
+    private static readonly Guid CategoryId = Guid.NewGuid();
+    private static readonly Guid UserId = Guid.NewGuid();
+    private static readonly DateOnly TransactionDate = new(2026, 8, 13);
+    private static readonly DateTimeOffset CreatedAt = new(2026, 8, 13, 12, 0, 0, TimeSpan.Zero);
+
+    [Fact]
+    public void Constructor_WithValidValues_CreatesTransaction()
+    {
+        var transaction = CreateTransaction();
+
+        Assert.Equal(TransactionId, transaction.Id);
+        Assert.Equal("Groceries", transaction.Description);
+        Assert.Equal(100m, transaction.Amount);
+        Assert.Equal(TransactionType.Expense, transaction.Type);
+        Assert.Equal(TransactionDate, transaction.Date);
+        Assert.Equal(CategoryId, transaction.CategoryId);
+        Assert.Equal(UserId, transaction.UserId);
+        Assert.Equal(CreatedAt, transaction.CreatedAt);
+        Assert.Null(transaction.UpdatedAt);
+    }
+
+    [Fact]
+    public void Constructor_WithNullDescription_ThrowsArgumentException()
+    {
+        var exception = Assert.Throws<ArgumentException>(() => CreateTransaction(description: null!));
+
+        Assert.Equal("description", exception.ParamName);
+    }
+
+    [Fact]
+    public void Constructor_WithEmptyDescription_ThrowsArgumentException()
+    {
+        var exception = Assert.Throws<ArgumentException>(() => CreateTransaction(description: string.Empty));
+
+        Assert.Equal("description", exception.ParamName);
+    }
+
+    [Fact]
+    public void Constructor_WithWhitespaceDescription_ThrowsArgumentException()
+    {
+        var exception = Assert.Throws<ArgumentException>(() => CreateTransaction(description: "   "));
+
+        Assert.Equal("description", exception.ParamName);
+    }
+
+    [Fact]
+    public void Constructor_WithZeroAmount_ThrowsArgumentOutOfRangeException()
+    {
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() => CreateTransaction(amount: 0));
+
+        Assert.Equal("amount", exception.ParamName);
+    }
+
+    [Fact]
+    public void Constructor_WithNegativeAmount_ThrowsArgumentOutOfRangeException()
+    {
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() => CreateTransaction(amount: -1));
+
+        Assert.Equal("amount", exception.ParamName);
+    }
+
+    [Fact]
+    public void Constructor_WithEmptyCategoryId_ThrowsArgumentException()
+    {
+        var exception = Assert.Throws<ArgumentException>(() => CreateTransaction(categoryId: Guid.Empty));
+
+        Assert.Equal("categoryId", exception.ParamName);
+    }
+
+    [Fact]
+    public void Constructor_WithEmptyUserId_ThrowsArgumentException()
+    {
+        var exception = Assert.Throws<ArgumentException>(() => CreateTransaction(userId: Guid.Empty));
+
+        Assert.Equal("userId", exception.ParamName);
+    }
+
+    private static Transaction CreateTransaction(
+        string description = "Groceries",
+        decimal amount = 100m,
+        Guid? categoryId = null,
+        Guid? userId = null)
+    {
+        return new Transaction(
+            TransactionId,
+            description,
+            amount,
+            TransactionType.Expense,
+            TransactionDate,
+            categoryId ?? CategoryId,
+            userId ?? UserId,
+            CreatedAt);
+    }
+}
