@@ -4,21 +4,63 @@ namespace SmartExpense.Domain.Entities;
 
 public class Transaction
 {
-    public Guid Id { get; set; }
+    public Transaction(
+        Guid id,
+        string description,
+        decimal amount,
+        TransactionType type,
+        DateOnly date,
+        Guid categoryId,
+        Guid userId,
+        DateTimeOffset createdAt,
+        DateTimeOffset? updatedAt = null)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            throw new ArgumentException("Description must not be empty or whitespace.", nameof(description));
+        }
 
-    public string Description { get; set; } = string.Empty;
+        if (amount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(amount), "Amount must be greater than zero.");
+        }
 
-    public decimal Amount { get; set; }
+        if (categoryId == Guid.Empty)
+        {
+            throw new ArgumentException("Category ID must not be empty.", nameof(categoryId));
+        }
 
-    public TransactionType Type { get; set; }
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("User ID must not be empty.", nameof(userId));
+        }
 
-    public DateOnly Date { get; set; }
+        Id = id;
+        Description = description;
+        Amount = amount;
+        Type = type;
+        Date = date;
+        CategoryId = categoryId;
+        UserId = userId;
+        CreatedAt = createdAt;
+        UpdatedAt = updatedAt;
+    }
 
-    public Guid CategoryId { get; set; }
+    public Guid Id { get; private set; }
 
-    public Guid UserId { get; set; }
+    public string Description { get; private set; }
 
-    public DateTimeOffset CreatedAt { get; set; }
+    public decimal Amount { get; private set; }
 
-    public DateTimeOffset? UpdatedAt { get; set; }
+    public TransactionType Type { get; private set; }
+
+    public DateOnly Date { get; private set; }
+
+    public Guid CategoryId { get; private set; }
+
+    public Guid UserId { get; private set; }
+
+    public DateTimeOffset CreatedAt { get; private set; }
+
+    public DateTimeOffset? UpdatedAt { get; private set; }
 }
