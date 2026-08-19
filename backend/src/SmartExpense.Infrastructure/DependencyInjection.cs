@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SmartExpense.Application.Abstractions.Authentication;
 using SmartExpense.Application.Abstractions.Persistence;
+using SmartExpense.Infrastructure.Authentication;
 using SmartExpense.Infrastructure.Identity;
 using SmartExpense.Infrastructure.Persistence;
 using SmartExpense.Infrastructure.Persistence.Repositories;
@@ -14,6 +16,16 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        return services.AddInfrastructure(
+            configuration,
+            JwtOptions.FromConfiguration(configuration));
+    }
+
+    public static IServiceCollection AddInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        JwtOptions jwtOptions)
+    {
         var connectionString = configuration.GetConnectionString("DefaultConnection");
 
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -25,8 +37,13 @@ public static class DependencyInjection
         services.AddDbContext<SmartExpenseDbContext>(options =>
             options.UseNpgsql(connectionString));
 
-        services.AddIdentityCore<ApplicationUser>()
+        services.AddIdentityCore<ApplicationUser>(options =>
+            options.User.RequireUniqueEmail = true)
             .AddEntityFrameworkStores<SmartExpenseDbContext>();
+
+        services.AddSingleton(jwtOptions);
+        services.AddScoped<IIdentityService, IdentityService>();
+        services.AddSingleton<IAccessTokenService, JwtTokenService>();
 
         services.AddScoped<ITransactionRepository, TransactionRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
