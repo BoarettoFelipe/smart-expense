@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using SmartExpense.Application.Abstractions.Persistence;
 using SmartExpense.Domain.Entities;
 
 namespace SmartExpense.Infrastructure.Persistence;
 
-public class SmartExpenseDbContext(DbContextOptions<SmartExpenseDbContext> options) : DbContext(options)
+public class SmartExpenseDbContext(DbContextOptions<SmartExpenseDbContext> options)
+    : DbContext(options), IUnitOfWork
 {
     public DbSet<Transaction> Transactions => Set<Transaction>();
 
