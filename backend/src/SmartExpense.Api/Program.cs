@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using SmartExpense.Api.Authentication;
+using SmartExpense.Application.Abstractions.Authentication;
 using SmartExpense.Application.Authentication;
 using SmartExpense.Infrastructure;
 using SmartExpense.Infrastructure.Authentication;
@@ -10,6 +12,8 @@ var builder = WebApplication.CreateBuilder(args);
 var jwtOptions = JwtOptions.FromConfiguration(builder.Configuration);
 
 builder.Services.AddInfrastructure(builder.Configuration, jwtOptions);
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, HttpContextCurrentUser>();
 builder.Services.AddScoped<RegisterUser>();
 builder.Services.AddScoped<LoginUser>();
 builder.Services
