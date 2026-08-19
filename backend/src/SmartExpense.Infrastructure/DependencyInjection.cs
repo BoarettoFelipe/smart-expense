@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SmartExpense.Application.Abstractions.Persistence;
+using SmartExpense.Infrastructure.Identity;
 using SmartExpense.Infrastructure.Persistence;
 using SmartExpense.Infrastructure.Persistence.Repositories;
 
@@ -23,6 +24,9 @@ public static class DependencyInjection
 
         services.AddDbContext<SmartExpenseDbContext>(options =>
             options.UseNpgsql(connectionString));
+
+        services.AddIdentityCore<ApplicationUser>()
+            .AddEntityFrameworkStores<SmartExpenseDbContext>();
 
         services.AddScoped<ITransactionRepository, TransactionRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();

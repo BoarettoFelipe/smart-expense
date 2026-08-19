@@ -1,11 +1,13 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using SmartExpense.Application.Abstractions.Persistence;
 using SmartExpense.Domain.Entities;
+using SmartExpense.Infrastructure.Identity;
 
 namespace SmartExpense.Infrastructure.Persistence;
 
 public class SmartExpenseDbContext(DbContextOptions<SmartExpenseDbContext> options)
-    : DbContext(options), IUnitOfWork
+    : IdentityUserContext<ApplicationUser, Guid>(options), IUnitOfWork
 {
     public DbSet<Transaction> Transactions => Set<Transaction>();
 
