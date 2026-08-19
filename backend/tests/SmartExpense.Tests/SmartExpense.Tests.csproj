@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\SmartExpense.Api\SmartExpense.Api.csproj" />
     <ProjectReference Include="..\..\src\SmartExpense.Application\SmartExpense.Application.csproj" />
     <ProjectReference Include="..\..\src\SmartExpense.Domain\SmartExpense.Domain.csproj" />
     <ProjectReference Include="..\..\src\SmartExpense.Infrastructure\SmartExpense.Infrastructure.csproj" />
