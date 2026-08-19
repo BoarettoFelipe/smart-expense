@@ -19,10 +19,12 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
 
     public bool MigrationsApplied { get; private set; }
 
+    public string ConnectionString => _container.GetConnectionString();
+
     public SmartExpenseDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<SmartExpenseDbContext>()
-            .UseNpgsql(_container.GetConnectionString())
+            .UseNpgsql(ConnectionString)
             .Options;
 
         return new SmartExpenseDbContext(options);
