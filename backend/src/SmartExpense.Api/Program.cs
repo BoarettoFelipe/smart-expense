@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using SmartExpense.Api.Authentication;
 using SmartExpense.Application.Abstractions.Authentication;
 using SmartExpense.Application.Authentication;
+using SmartExpense.Application.Transactions;
 using SmartExpense.Infrastructure;
 using SmartExpense.Infrastructure.Authentication;
 
@@ -16,6 +17,9 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpContextCurrentUser>();
 builder.Services.AddScoped<RegisterUser>();
 builder.Services.AddScoped<LoginUser>();
+builder.Services.AddScoped<CreateTransaction>();
+builder.Services.AddScoped<GetTransactions>();
+builder.Services.AddScoped<GetTransactionById>();
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -44,3 +48,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program;
