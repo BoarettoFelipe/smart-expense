@@ -13,9 +13,17 @@ internal sealed class FakeCategoryRepository : ICategoryRepository
 {
     public List<Category> Categories { get; } = [];
 
+    public List<Category> AddedCategories { get; } = [];
+
+    public List<Category> RemovedCategories { get; } = [];
+
     public int GetByIdCallCount { get; private set; }
 
+    public int GetByUserCallCount { get; private set; }
+
     public Guid? LastQueriedUserId { get; private set; }
+
+    public Guid? LastQueriedCategoryId { get; private set; }
 
     public Task<Category?> GetByIdAsync(
         Guid id,
@@ -24,6 +32,7 @@ internal sealed class FakeCategoryRepository : ICategoryRepository
     {
         GetByIdCallCount++;
         LastQueriedUserId = userId;
+        LastQueriedCategoryId = id;
 
         return Task.FromResult(Categories.SingleOrDefault(
             category => category.Id == id && category.UserId == userId));
@@ -33,6 +42,9 @@ internal sealed class FakeCategoryRepository : ICategoryRepository
         Guid userId,
         CancellationToken cancellationToken = default)
     {
+        GetByUserCallCount++;
+        LastQueriedUserId = userId;
+
         IReadOnlyList<Category> categories = Categories
             .Where(category => category.UserId == userId)
             .ToArray();
@@ -44,12 +56,14 @@ internal sealed class FakeCategoryRepository : ICategoryRepository
         Category category,
         CancellationToken cancellationToken = default)
     {
+        AddedCategories.Add(category);
         Categories.Add(category);
         return Task.CompletedTask;
     }
 
     public void Remove(Category category)
     {
+        RemovedCategories.Add(category);
         Categories.Remove(category);
     }
 }
@@ -66,9 +80,13 @@ internal sealed class FakeTransactionRepository : ITransactionRepository
 
     public int GetByUserCallCount { get; private set; }
 
+    public int ExistsByCategoryCallCount { get; private set; }
+
     public Guid? LastQueriedUserId { get; private set; }
 
     public Guid? LastQueriedTransactionId { get; private set; }
+
+    public Guid? LastQueriedCategoryId { get; private set; }
 
     public Task<Transaction?> GetByIdAsync(
         Guid id,
@@ -95,6 +113,21 @@ internal sealed class FakeTransactionRepository : ITransactionRepository
             .ToArray();
 
         return Task.FromResult(transactions);
+    }
+
+    public Task<bool> ExistsByCategoryAsync(
+        Guid categoryId,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        ExistsByCategoryCallCount++;
+        LastQueriedCategoryId = categoryId;
+        LastQueriedUserId = userId;
+
+        return Task.FromResult(Transactions.Any(
+            transaction =>
+                transaction.CategoryId == categoryId &&
+                transaction.UserId == userId));
     }
 
     public Task AddAsync(

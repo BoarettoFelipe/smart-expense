@@ -13,6 +13,11 @@ public interface ITransactionRepository
         Guid userId,
         CancellationToken cancellationToken = default);
 
+    Task<bool> ExistsByCategoryAsync(
+        Guid categoryId,
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(
         Transaction transaction,
         CancellationToken cancellationToken = default);

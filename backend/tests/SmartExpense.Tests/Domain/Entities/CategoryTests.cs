@@ -53,6 +53,53 @@ public class CategoryTests
         Assert.Equal("userId", exception.ParamName);
     }
 
+    [Fact]
+    public void Update_WithValidValues_ChangesEditableFieldsAndPreservesIdentity()
+    {
+        var category = CreateCategory();
+
+        category.Update("Updated category", TransactionType.Expense);
+
+        Assert.Equal("Updated category", category.Name);
+        Assert.Equal(TransactionType.Expense, category.Type);
+        Assert.Equal(CategoryId, category.Id);
+        Assert.Equal(UserId, category.UserId);
+        Assert.Equal(CreatedAt, category.CreatedAt);
+    }
+
+    [Fact]
+    public void Update_WithNullName_ThrowsArgumentException()
+    {
+        var category = CreateCategory();
+
+        var exception = Assert.Throws<ArgumentException>(() =>
+            category.Update(null!, TransactionType.Expense));
+
+        Assert.Equal("name", exception.ParamName);
+    }
+
+    [Fact]
+    public void Update_WithEmptyName_ThrowsArgumentException()
+    {
+        var category = CreateCategory();
+
+        var exception = Assert.Throws<ArgumentException>(() =>
+            category.Update(string.Empty, TransactionType.Expense));
+
+        Assert.Equal("name", exception.ParamName);
+    }
+
+    [Fact]
+    public void Update_WithWhitespaceName_ThrowsArgumentException()
+    {
+        var category = CreateCategory();
+
+        var exception = Assert.Throws<ArgumentException>(() =>
+            category.Update("   ", TransactionType.Expense));
+
+        Assert.Equal("name", exception.ParamName);
+    }
+
     private static Category CreateCategory(string name = "Salary", Guid? userId = null)
     {
         return new Category(
