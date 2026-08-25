@@ -20,6 +20,8 @@ builder.Services.AddScoped<LoginUser>();
 builder.Services.AddScoped<CreateTransaction>();
 builder.Services.AddScoped<GetTransactions>();
 builder.Services.AddScoped<GetTransactionById>();
+builder.Services.AddScoped<UpdateTransaction>();
+builder.Services.AddScoped<DeleteTransaction>();
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
