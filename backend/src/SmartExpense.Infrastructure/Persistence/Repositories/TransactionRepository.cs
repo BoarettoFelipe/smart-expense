@@ -27,6 +27,18 @@ public sealed class TransactionRepository(SmartExpenseDbContext dbContext)
             .ToListAsync(cancellationToken);
     }
 
+    public Task<bool> ExistsByCategoryAsync(
+        Guid categoryId,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        return dbContext.Transactions.AnyAsync(
+            transaction =>
+                transaction.CategoryId == categoryId &&
+                transaction.UserId == userId,
+            cancellationToken);
+    }
+
     public async Task AddAsync(
         Transaction transaction,
         CancellationToken cancellationToken = default)

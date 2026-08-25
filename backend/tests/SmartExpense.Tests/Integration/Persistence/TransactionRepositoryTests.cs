@@ -120,6 +120,60 @@ public sealed class TransactionRepositoryTests(PostgreSqlFixture fixture)
             .GetByIdAsync(transaction.Id, userId));
     }
 
+    [Fact]
+    public async Task ExistsByCategoryAsync_WithUsersTransaction_ReturnsTrue()
+    {
+        var userId = Guid.NewGuid();
+        var transaction = await PersistTransactionAsync(userId);
+
+        await using var dbContext = fixture.CreateDbContext();
+        var result = await new TransactionRepository(dbContext)
+            .ExistsByCategoryAsync(transaction.CategoryId, userId);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task ExistsByCategoryAsync_WithUnusedCategory_ReturnsFalse()
+    {
+        var userId = Guid.NewGuid();
+        var category = CreateCategory(userId);
+
+        await using (var setupContext = fixture.CreateDbContext())
+        {
+            await new CategoryRepository(setupContext).AddAsync(category);
+            Assert.Equal(1, await ((IUnitOfWork)setupContext).SaveChangesAsync());
+        }
+
+        await using var dbContext = fixture.CreateDbContext();
+        var result = await new TransactionRepository(dbContext)
+            .ExistsByCategoryAsync(category.Id, userId);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task ExistsByCategoryAsync_WithAnotherUsersTransaction_ReturnsFalse()
+    {
+        var categoryOwnerId = Guid.NewGuid();
+        var transactionOwnerId = Guid.NewGuid();
+        var category = CreateCategory(categoryOwnerId);
+        var transaction = CreateTransaction(category.Id, transactionOwnerId);
+
+        await using (var setupContext = fixture.CreateDbContext())
+        {
+            await new CategoryRepository(setupContext).AddAsync(category);
+            await new TransactionRepository(setupContext).AddAsync(transaction);
+            Assert.Equal(2, await ((IUnitOfWork)setupContext).SaveChangesAsync());
+        }
+
+        await using var dbContext = fixture.CreateDbContext();
+        var result = await new TransactionRepository(dbContext)
+            .ExistsByCategoryAsync(category.Id, categoryOwnerId);
+
+        Assert.False(result);
+    }
+
     private async Task<Transaction> PersistTransactionAsync(Guid userId)
     {
         await using var dbContext = fixture.CreateDbContext();

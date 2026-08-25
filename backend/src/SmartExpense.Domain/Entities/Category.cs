@@ -11,10 +11,7 @@ public class Category
         Guid userId,
         DateTimeOffset createdAt)
     {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new ArgumentException("Name must not be empty or whitespace.", nameof(name));
-        }
+        ValidateName(name);
 
         if (userId == Guid.Empty)
         {
@@ -28,6 +25,14 @@ public class Category
         CreatedAt = createdAt;
     }
 
+    public void Update(string name, TransactionType type)
+    {
+        ValidateName(name);
+
+        Name = name;
+        Type = type;
+    }
+
     public Guid Id { get; private set; }
 
     public string Name { get; private set; }
@@ -37,4 +42,14 @@ public class Category
     public Guid UserId { get; private set; }
 
     public DateTimeOffset CreatedAt { get; private set; }
+
+    private static void ValidateName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException(
+                "Name must not be empty or whitespace.",
+                nameof(name));
+        }
+    }
 }
