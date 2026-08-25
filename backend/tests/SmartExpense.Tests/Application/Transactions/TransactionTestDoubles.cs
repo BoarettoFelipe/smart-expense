@@ -60,11 +60,15 @@ internal sealed class FakeTransactionRepository : ITransactionRepository
 
     public List<Transaction> AddedTransactions { get; } = [];
 
+    public List<Transaction> RemovedTransactions { get; } = [];
+
     public int GetByIdCallCount { get; private set; }
 
     public int GetByUserCallCount { get; private set; }
 
     public Guid? LastQueriedUserId { get; private set; }
+
+    public Guid? LastQueriedTransactionId { get; private set; }
 
     public Task<Transaction?> GetByIdAsync(
         Guid id,
@@ -73,6 +77,7 @@ internal sealed class FakeTransactionRepository : ITransactionRepository
     {
         GetByIdCallCount++;
         LastQueriedUserId = userId;
+        LastQueriedTransactionId = id;
 
         return Task.FromResult(Transactions.SingleOrDefault(
             transaction => transaction.Id == id && transaction.UserId == userId));
@@ -103,6 +108,7 @@ internal sealed class FakeTransactionRepository : ITransactionRepository
 
     public void Remove(Transaction transaction)
     {
+        RemovedTransactions.Add(transaction);
         Transactions.Remove(transaction);
     }
 }

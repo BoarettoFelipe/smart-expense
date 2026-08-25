@@ -12,7 +12,9 @@ namespace SmartExpense.Api.Controllers;
 public sealed class TransactionsController(
     CreateTransaction createTransaction,
     GetTransactions getTransactions,
-    GetTransactionById getTransactionById) : ControllerBase
+    GetTransactionById getTransactionById,
+    UpdateTransaction updateTransaction,
+    DeleteTransaction deleteTransaction) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Create(
@@ -95,6 +97,79 @@ public sealed class TransactionsController(
         }
 
         return Ok(Map(result.Transaction!));
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(
+        Guid id,
+        UpdateTransactionRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryParseTransactionType(request.Type, out var transactionType))
+        {
+            return BadRequest(new TransactionErrorResponse(
+                "Invalid transaction type.",
+                ["Type must be 'Income' or 'Expense'."]));
+        }
+
+        var result = await updateTransaction.ExecuteAsync(
+            new UpdateTransactionCommand(
+                id,
+                request.Description,
+                request.Amount,
+                transactionType,
+                request.Date,
+                request.CategoryId),
+            cancellationToken);
+
+        if (result.Status == UpdateTransactionStatus.Unauthenticated)
+        {
+            return Unauthorized();
+        }
+
+        if (result.Status == UpdateTransactionStatus.NotFound)
+        {
+            return NotFound(new TransactionErrorResponse(
+                "Transaction was not found."));
+        }
+
+        if (result.Status == UpdateTransactionStatus.CategoryUnavailable)
+        {
+            return NotFound(new TransactionErrorResponse(
+                "Category was not found."));
+        }
+
+        if (result.Status == UpdateTransactionStatus.Invalid)
+        {
+            return BadRequest(new TransactionErrorResponse(
+                "Transaction is invalid.",
+                result.Errors));
+        }
+
+        return Ok(Map(result.Transaction!));
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result = await deleteTransaction.ExecuteAsync(
+            id,
+            cancellationToken);
+
+        if (result.Status == DeleteTransactionStatus.Unauthenticated)
+        {
+            return Unauthorized();
+        }
+
+        if (result.Status == DeleteTransactionStatus.NotFound)
+        {
+            return NotFound(new TransactionErrorResponse(
+                "Transaction was not found."));
+        }
+
+        return NoContent();
     }
 
     private static bool TryParseTransactionType(

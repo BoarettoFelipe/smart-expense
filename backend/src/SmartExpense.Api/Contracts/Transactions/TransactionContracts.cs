@@ -7,6 +7,13 @@ public sealed record CreateTransactionRequest(
     DateOnly Date,
     Guid CategoryId);
 
+public sealed record UpdateTransactionRequest(
+    string Description,
+    decimal Amount,
+    string Type,
+    DateOnly Date,
+    Guid CategoryId);
+
 public sealed record TransactionResponse(
     Guid Id,
     string Description,

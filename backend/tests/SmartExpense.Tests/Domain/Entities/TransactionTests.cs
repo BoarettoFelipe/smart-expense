@@ -83,6 +83,104 @@ public class TransactionTests
         Assert.Equal("userId", exception.ParamName);
     }
 
+    [Fact]
+    public void Update_WithValidValues_ChangesEditableFieldsAndPreservesIdentity()
+    {
+        var transaction = CreateTransaction();
+        var newCategoryId = Guid.NewGuid();
+        var newDate = new DateOnly(2026, 8, 25);
+        var updatedAt = new DateTimeOffset(
+            2026,
+            8,
+            25,
+            12,
+            0,
+            0,
+            TimeSpan.Zero);
+
+        transaction.Update(
+            "Updated groceries",
+            150m,
+            TransactionType.Income,
+            newDate,
+            newCategoryId,
+            updatedAt);
+
+        Assert.Equal("Updated groceries", transaction.Description);
+        Assert.Equal(150m, transaction.Amount);
+        Assert.Equal(TransactionType.Income, transaction.Type);
+        Assert.Equal(newDate, transaction.Date);
+        Assert.Equal(newCategoryId, transaction.CategoryId);
+        Assert.Equal(updatedAt, transaction.UpdatedAt);
+        Assert.Equal(TransactionId, transaction.Id);
+        Assert.Equal(UserId, transaction.UserId);
+        Assert.Equal(CreatedAt, transaction.CreatedAt);
+    }
+
+    [Fact]
+    public void Update_WithWhitespaceDescription_ThrowsArgumentException()
+    {
+        var transaction = CreateTransaction();
+
+        var exception = Assert.Throws<ArgumentException>(() => transaction.Update(
+            "   ",
+            150m,
+            TransactionType.Expense,
+            TransactionDate,
+            CategoryId,
+            DateTimeOffset.UtcNow));
+
+        Assert.Equal("description", exception.ParamName);
+    }
+
+    [Fact]
+    public void Update_WithZeroAmount_ThrowsArgumentOutOfRangeException()
+    {
+        var transaction = CreateTransaction();
+
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() => transaction.Update(
+            "Groceries",
+            0m,
+            TransactionType.Expense,
+            TransactionDate,
+            CategoryId,
+            DateTimeOffset.UtcNow));
+
+        Assert.Equal("amount", exception.ParamName);
+    }
+
+    [Fact]
+    public void Update_WithNegativeAmount_ThrowsArgumentOutOfRangeException()
+    {
+        var transaction = CreateTransaction();
+
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() => transaction.Update(
+            "Groceries",
+            -1m,
+            TransactionType.Expense,
+            TransactionDate,
+            CategoryId,
+            DateTimeOffset.UtcNow));
+
+        Assert.Equal("amount", exception.ParamName);
+    }
+
+    [Fact]
+    public void Update_WithEmptyCategoryId_ThrowsArgumentException()
+    {
+        var transaction = CreateTransaction();
+
+        var exception = Assert.Throws<ArgumentException>(() => transaction.Update(
+            "Groceries",
+            150m,
+            TransactionType.Expense,
+            TransactionDate,
+            Guid.Empty,
+            DateTimeOffset.UtcNow));
+
+        Assert.Equal("categoryId", exception.ParamName);
+    }
+
     private static Transaction CreateTransaction(
         string description = "Groceries",
         decimal amount = 100m,

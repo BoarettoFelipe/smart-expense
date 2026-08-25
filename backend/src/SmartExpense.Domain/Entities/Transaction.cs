@@ -15,20 +15,7 @@ public class Transaction
         DateTimeOffset createdAt,
         DateTimeOffset? updatedAt = null)
     {
-        if (string.IsNullOrWhiteSpace(description))
-        {
-            throw new ArgumentException("Description must not be empty or whitespace.", nameof(description));
-        }
-
-        if (amount <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(amount), "Amount must be greater than zero.");
-        }
-
-        if (categoryId == Guid.Empty)
-        {
-            throw new ArgumentException("Category ID must not be empty.", nameof(categoryId));
-        }
+        ValidateEditableFields(description, amount, categoryId);
 
         if (userId == Guid.Empty)
         {
@@ -43,6 +30,24 @@ public class Transaction
         CategoryId = categoryId;
         UserId = userId;
         CreatedAt = createdAt;
+        UpdatedAt = updatedAt;
+    }
+
+    public void Update(
+        string description,
+        decimal amount,
+        TransactionType type,
+        DateOnly date,
+        Guid categoryId,
+        DateTimeOffset updatedAt)
+    {
+        ValidateEditableFields(description, amount, categoryId);
+
+        Description = description;
+        Amount = amount;
+        Type = type;
+        Date = date;
+        CategoryId = categoryId;
         UpdatedAt = updatedAt;
     }
 
@@ -63,4 +68,31 @@ public class Transaction
     public DateTimeOffset CreatedAt { get; private set; }
 
     public DateTimeOffset? UpdatedAt { get; private set; }
+
+    private static void ValidateEditableFields(
+        string description,
+        decimal amount,
+        Guid categoryId)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            throw new ArgumentException(
+                "Description must not be empty or whitespace.",
+                nameof(description));
+        }
+
+        if (amount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(amount),
+                "Amount must be greater than zero.");
+        }
+
+        if (categoryId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Category ID must not be empty.",
+                nameof(categoryId));
+        }
+    }
 }
