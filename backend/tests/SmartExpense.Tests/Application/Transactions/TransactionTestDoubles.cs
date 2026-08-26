@@ -157,3 +157,86 @@ internal sealed class FakeUnitOfWork : IUnitOfWork
         return Task.FromResult(1);
     }
 }
+
+internal sealed class FakeBudgetRepository : IBudgetRepository
+{
+    public List<Budget> Budgets { get; } = [];
+
+    public List<Budget> AddedBudgets { get; } = [];
+
+    public List<Budget> RemovedBudgets { get; } = [];
+
+    public int GetByIdCallCount { get; private set; }
+
+    public int GetByPeriodCallCount { get; private set; }
+
+    public int GetByUserCallCount { get; private set; }
+
+    public Guid? LastQueriedBudgetId { get; private set; }
+
+    public Guid? LastQueriedUserId { get; private set; }
+
+    public int? LastQueriedMonth { get; private set; }
+
+    public int? LastQueriedYear { get; private set; }
+
+    public Task<Budget?> GetByIdAsync(
+        Guid id,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        GetByIdCallCount++;
+        LastQueriedBudgetId = id;
+        LastQueriedUserId = userId;
+
+        return Task.FromResult(Budgets.SingleOrDefault(
+            budget => budget.Id == id && budget.UserId == userId));
+    }
+
+    public Task<Budget?> GetByPeriodAsync(
+        Guid userId,
+        int month,
+        int year,
+        CancellationToken cancellationToken = default)
+    {
+        GetByPeriodCallCount++;
+        LastQueriedUserId = userId;
+        LastQueriedMonth = month;
+        LastQueriedYear = year;
+
+        return Task.FromResult(Budgets.SingleOrDefault(
+            budget =>
+                budget.UserId == userId &&
+                budget.Month == month &&
+                budget.Year == year));
+    }
+
+    public Task<IReadOnlyList<Budget>> GetByUserAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        GetByUserCallCount++;
+        LastQueriedUserId = userId;
+
+        IReadOnlyList<Budget> budgets = Budgets
+            .Where(budget => budget.UserId == userId)
+            .ToArray();
+
+        return Task.FromResult(budgets);
+    }
+
+    public Task AddAsync(
+        Budget budget,
+        CancellationToken cancellationToken = default)
+    {
+        AddedBudgets.Add(budget);
+        Budgets.Add(budget);
+        return Task.CompletedTask;
+    }
+
+    public void Remove(Budget budget)
+    {
+        RemovedBudgets.Add(budget);
+        Budgets.Remove(budget);
+    }
+}
