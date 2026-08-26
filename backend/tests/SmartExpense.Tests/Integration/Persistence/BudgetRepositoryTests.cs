@@ -99,6 +99,47 @@ public sealed class BudgetRepositoryTests(PostgreSqlFixture fixture)
         Assert.Equal(requestedUserId, result.UserId);
     }
 
+    [Fact]
+    public async Task UniquePeriodIndex_PreventsDuplicatePeriodForSameUser()
+    {
+        var userId = Guid.NewGuid();
+
+        await using var dbContext = fixture.CreateDbContext();
+        var repository = new BudgetRepository(dbContext);
+        await repository.AddAsync(CreateBudget(userId, 3, 2027));
+        await repository.AddAsync(CreateBudget(userId, 3, 2027));
+
+        await Assert.ThrowsAsync<DbUpdateException>(() =>
+            ((IUnitOfWork)dbContext).SaveChangesAsync());
+    }
+
+    [Fact]
+    public async Task UniquePeriodIndex_AllowsSamePeriodForDifferentUsers()
+    {
+        var firstUserId = Guid.NewGuid();
+        var secondUserId = Guid.NewGuid();
+
+        await using (var dbContext = fixture.CreateDbContext())
+        {
+            var repository = new BudgetRepository(dbContext);
+            await repository.AddAsync(CreateBudget(firstUserId, 2, 2027));
+            await repository.AddAsync(CreateBudget(secondUserId, 2, 2027));
+
+            Assert.Equal(2, await ((IUnitOfWork)dbContext).SaveChangesAsync());
+        }
+
+        await using var verificationContext = fixture.CreateDbContext();
+        var verificationRepository = new BudgetRepository(verificationContext);
+        Assert.NotNull(await verificationRepository.GetByPeriodAsync(
+            firstUserId,
+            2,
+            2027));
+        Assert.NotNull(await verificationRepository.GetByPeriodAsync(
+            secondUserId,
+            2,
+            2027));
+    }
+
     private async Task<Budget> PersistBudgetAsync(Guid userId, int month, int year)
     {
         await using var dbContext = fixture.CreateDbContext();

@@ -35,5 +35,13 @@ public class BudgetConfiguration : IEntityTypeConfiguration<Budget>
         builder.Property(budget => budget.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();
+
+        builder.HasIndex(budget => new
+            {
+                budget.UserId,
+                budget.Month,
+                budget.Year
+            })
+            .IsUnique();
     }
 }

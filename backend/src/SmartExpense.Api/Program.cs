@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using SmartExpense.Api.Authentication;
 using SmartExpense.Application.Abstractions.Authentication;
 using SmartExpense.Application.Authentication;
+using SmartExpense.Application.Budgets;
 using SmartExpense.Application.Categories;
 using SmartExpense.Application.Transactions;
 using SmartExpense.Infrastructure;
@@ -28,6 +29,11 @@ builder.Services.AddScoped<GetCategories>();
 builder.Services.AddScoped<GetCategoryById>();
 builder.Services.AddScoped<UpdateCategory>();
 builder.Services.AddScoped<DeleteCategory>();
+builder.Services.AddScoped<CreateBudget>();
+builder.Services.AddScoped<GetBudgets>();
+builder.Services.AddScoped<GetBudgetById>();
+builder.Services.AddScoped<UpdateBudget>();
+builder.Services.AddScoped<DeleteBudget>();
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

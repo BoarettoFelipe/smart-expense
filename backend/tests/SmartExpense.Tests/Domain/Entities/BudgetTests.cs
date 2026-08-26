@@ -69,6 +69,65 @@ public class BudgetTests
         Assert.Equal("userId", exception.ParamName);
     }
 
+    [Fact]
+    public void Update_WithValidValues_ChangesEditableFieldsAndPreservesIdentity()
+    {
+        var budget = CreateBudget();
+
+        budget.Update(9, 2027, 750m);
+
+        Assert.Equal(9, budget.Month);
+        Assert.Equal(2027, budget.Year);
+        Assert.Equal(750m, budget.Amount);
+        Assert.Equal(BudgetId, budget.Id);
+        Assert.Equal(UserId, budget.UserId);
+        Assert.Equal(CreatedAt, budget.CreatedAt);
+    }
+
+    [Fact]
+    public void Update_WithMonthBelowOne_ThrowsArgumentOutOfRangeException()
+    {
+        var budget = CreateBudget();
+
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            budget.Update(0, 2027, 750m));
+
+        Assert.Equal("month", exception.ParamName);
+    }
+
+    [Fact]
+    public void Update_WithMonthAboveTwelve_ThrowsArgumentOutOfRangeException()
+    {
+        var budget = CreateBudget();
+
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            budget.Update(13, 2027, 750m));
+
+        Assert.Equal("month", exception.ParamName);
+    }
+
+    [Fact]
+    public void Update_WithInvalidYear_ThrowsArgumentOutOfRangeException()
+    {
+        var budget = CreateBudget();
+
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            budget.Update(9, 0, 750m));
+
+        Assert.Equal("year", exception.ParamName);
+    }
+
+    [Fact]
+    public void Update_WithInvalidAmount_ThrowsArgumentOutOfRangeException()
+    {
+        var budget = CreateBudget();
+
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            budget.Update(9, 2027, 0m));
+
+        Assert.Equal("amount", exception.ParamName);
+    }
+
     private static Budget CreateBudget(
         int month = 8,
         int year = 2026,
