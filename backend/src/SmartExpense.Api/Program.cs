@@ -4,6 +4,7 @@ using SmartExpense.Application.Abstractions.Authentication;
 using SmartExpense.Application.Authentication;
 using SmartExpense.Application.Budgets;
 using SmartExpense.Application.Categories;
+using SmartExpense.Application.Dashboard;
 using SmartExpense.Application.Transactions;
 using SmartExpense.Infrastructure;
 using SmartExpense.Infrastructure.Authentication;
@@ -34,6 +35,7 @@ builder.Services.AddScoped<GetBudgets>();
 builder.Services.AddScoped<GetBudgetById>();
 builder.Services.AddScoped<UpdateBudget>();
 builder.Services.AddScoped<DeleteBudget>();
+builder.Services.AddScoped<GetDashboard>();
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
