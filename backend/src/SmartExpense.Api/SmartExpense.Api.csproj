@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>SmartExpense.Api-LocalDevelopment-13c20d86-6192-4bf4-83b7-63695594899b</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
