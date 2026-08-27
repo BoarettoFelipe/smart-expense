@@ -1,0 +1,13 @@
+.git/
+.vs/
+.vscode/
+.idea/
+.env
+.env.*
+**/bin/
+**/obj/
+**/TestResults/
+**/*.user
+**/*.suo
+frontend/
+backend/tests/
