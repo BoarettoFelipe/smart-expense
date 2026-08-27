@@ -51,6 +51,67 @@ public sealed class UpdateTransactionTests
     }
 
     [Fact]
+    public async Task Execute_WithMatchingExpenseCategory_UpdatesAndPersists()
+    {
+        var userId = Guid.NewGuid();
+        var transaction = CreateTransaction(userId);
+        var category = CreateCategory(userId, TransactionType.Expense);
+        var transactionRepository = new FakeTransactionRepository();
+        transactionRepository.Transactions.Add(transaction);
+        var categoryRepository = new FakeCategoryRepository();
+        categoryRepository.Categories.Add(category);
+        var unitOfWork = new FakeUnitOfWork();
+        var operation = new UpdateTransaction(
+            new StubCurrentUser(userId),
+            transactionRepository,
+            categoryRepository,
+            unitOfWork);
+        var command = CreateCommand(transaction.Id, category.Id) with
+        {
+            Type = TransactionType.Expense
+        };
+
+        var result = await operation.ExecuteAsync(command);
+
+        Assert.Equal(UpdateTransactionStatus.Success, result.Status);
+        Assert.Equal(TransactionType.Expense, result.Transaction!.Type);
+        Assert.Equal(category.Id, transaction.CategoryId);
+        Assert.Equal(1, unitOfWork.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task Execute_WithMismatchedCategoryType_ReturnsCategoryTypeMismatchWithoutUpdatingOrPersisting()
+    {
+        var userId = Guid.NewGuid();
+        var transaction = CreateTransaction(userId);
+        var category = CreateCategory(userId, TransactionType.Expense);
+        var originalDescription = transaction.Description;
+        var originalCategoryId = transaction.CategoryId;
+        var transactionRepository = new FakeTransactionRepository();
+        transactionRepository.Transactions.Add(transaction);
+        var categoryRepository = new FakeCategoryRepository();
+        categoryRepository.Categories.Add(category);
+        var unitOfWork = new FakeUnitOfWork();
+        var operation = new UpdateTransaction(
+            new StubCurrentUser(userId),
+            transactionRepository,
+            categoryRepository,
+            unitOfWork);
+        var command = CreateCommand(transaction.Id, category.Id);
+
+        var result = await operation.ExecuteAsync(command);
+
+        Assert.Equal(UpdateTransactionStatus.CategoryTypeMismatch, result.Status);
+        Assert.Equal(
+            ["Transaction type must match the selected category type."],
+            result.Errors);
+        Assert.Equal(originalDescription, transaction.Description);
+        Assert.Equal(originalCategoryId, transaction.CategoryId);
+        Assert.Null(transaction.UpdatedAt);
+        Assert.Equal(0, unitOfWork.SaveChangesCallCount);
+    }
+
+    [Fact]
     public void Command_DoesNotExposeClientControlledServerValues()
     {
         var properties = typeof(UpdateTransactionCommand).GetProperties();
@@ -230,12 +291,14 @@ public sealed class UpdateTransactionTests
             new DateTimeOffset(2026, 8, 19, 12, 0, 0, TimeSpan.Zero));
     }
 
-    private static Category CreateCategory(Guid userId)
+    private static Category CreateCategory(
+        Guid userId,
+        TransactionType type = TransactionType.Income)
     {
         return new Category(
             Guid.NewGuid(),
             $"Category-{Guid.NewGuid():N}",
-            TransactionType.Income,
+            type,
             userId,
             DateTimeOffset.UtcNow);
     }
