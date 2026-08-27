@@ -48,6 +48,13 @@ public sealed class TransactionsController(
                 "Category was not found."));
         }
 
+        if (result.Status == CreateTransactionStatus.CategoryTypeMismatch)
+        {
+            return BadRequest(new TransactionErrorResponse(
+                "Transaction type must match the selected category type.",
+                result.Errors));
+        }
+
         if (result.Status == CreateTransactionStatus.Invalid)
         {
             return BadRequest(new TransactionErrorResponse(
@@ -137,6 +144,13 @@ public sealed class TransactionsController(
         {
             return NotFound(new TransactionErrorResponse(
                 "Category was not found."));
+        }
+
+        if (result.Status == UpdateTransactionStatus.CategoryTypeMismatch)
+        {
+            return BadRequest(new TransactionErrorResponse(
+                "Transaction type must match the selected category type.",
+                result.Errors));
         }
 
         if (result.Status == UpdateTransactionStatus.Invalid)

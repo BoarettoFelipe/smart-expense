@@ -30,6 +30,11 @@ public sealed class CreateTransaction(
             return CreateTransactionResult.CategoryUnavailable();
         }
 
+        if (category.Type != command.Type)
+        {
+            return CreateTransactionResult.CategoryTypeMismatch();
+        }
+
         Transaction transaction;
 
         try
@@ -69,6 +74,7 @@ public enum CreateTransactionStatus
     Success,
     Unauthenticated,
     CategoryUnavailable,
+    CategoryTypeMismatch,
     Invalid
 }
 
@@ -85,6 +91,12 @@ public sealed record CreateTransactionResult(
 
     public static CreateTransactionResult CategoryUnavailable() =>
         new(CreateTransactionStatus.CategoryUnavailable, null, []);
+
+    public static CreateTransactionResult CategoryTypeMismatch() =>
+        new(
+            CreateTransactionStatus.CategoryTypeMismatch,
+            null,
+            ["Transaction type must match the selected category type."]);
 
     public static CreateTransactionResult Invalid() =>
         new(
