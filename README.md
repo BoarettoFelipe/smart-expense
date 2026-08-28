@@ -90,3 +90,11 @@ docker compose --profile app down
 `docker compose down -v` also deletes the PostgreSQL volume and its data. Use it
 only when a destructive database reset is intentional, not during normal
 development.
+
+## Continuous integration
+
+The GitHub Actions CI workflow runs for pull requests targeting `main` and
+pushes to `main`. It validates the Release backend build and complete test suite,
+frontend lint and production build, and an isolated full-stack Docker smoke test.
+CI uses disposable local-only database and JWT values and does not deploy or
+publish container images.
