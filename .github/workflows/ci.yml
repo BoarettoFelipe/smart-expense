@@ -1,0 +1,192 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('backend/**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore backend
+        run: dotnet restore backend/SmartExpense.slnx
+
+      - name: Build backend
+        run: dotnet build backend/SmartExpense.slnx --configuration Release --no-restore --warnaserror
+
+      - name: Test backend
+        run: dotnet test backend/SmartExpense.slnx --configuration Release --no-restore --no-build --logger "console;verbosity=minimal"
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Build frontend
+        run: npm run build
+
+  docker:
+    name: Docker smoke test
+    needs:
+      - backend
+      - frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      COMPOSE_PROJECT_NAME: smartexpense-ci
+      POSTGRES_DB: smartexpense_ci
+      POSTGRES_USER: smartexpense_ci
+      POSTGRES_PASSWORD: ci-only-postgres-password
+      JWT_SIGNING_KEY: ci-only-jwt-signing-key-with-more-than-32-bytes
+      POSTGRES_HOST_PORT: 5432
+      FRONTEND_HOST_PORT: 8080
+      POSTGRES_VOLUME_NAME: smartexpense-ci-postgres-data
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Build Docker images
+        run: docker compose --profile app build
+
+      - name: Start Docker stack
+        run: docker compose --profile app up --detach --no-build
+
+      - name: Verify migration completion
+        run: |
+          migration_id="$(docker compose --profile app ps --all --quiet migrations)"
+
+          if [ -z "$migration_id" ]; then
+            echo "The migrations container was not created."
+            exit 1
+          fi
+
+          migration_status="$(docker inspect --format '{{.State.Status}}' "$migration_id")"
+          migration_exit_code="$(docker inspect --format '{{.State.ExitCode}}' "$migration_id")"
+
+          if [ "$migration_status" != "exited" ] || [ "$migration_exit_code" != "0" ]; then
+            echo "Migrations did not complete successfully (status=$migration_status, exit=$migration_exit_code)."
+            exit 1
+          fi
+
+      - name: Wait for healthy services
+        run: |
+          wait_for_healthy_service() {
+            service="$1"
+            container_id="$(docker compose --profile app ps --quiet "$service")"
+
+            if [ -z "$container_id" ]; then
+              echo "No running container found for $service."
+              return 1
+            fi
+
+            for attempt in $(seq 1 30); do
+              health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container_id")"
+
+              if [ "$health" = "healthy" ]; then
+                echo "$service is healthy."
+                return 0
+              fi
+
+              if [ "$health" = "exited" ] || [ "$health" = "dead" ]; then
+                echo "$service stopped before becoming healthy."
+                return 1
+              fi
+
+              echo "Waiting for $service health ($attempt/30, current=$health)..."
+              sleep 2
+            done
+
+            echo "$service did not become healthy within 60 seconds."
+            return 1
+          }
+
+          wait_for_healthy_service smart-expense-postgres
+          wait_for_healthy_service api
+          wait_for_healthy_service frontend
+
+      - name: Verify API health inside Compose
+        run: docker compose --profile app exec -T api wget -q -O - http://localhost:8080/health
+
+      - name: Verify frontend root
+        run: |
+          status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' http://localhost:8080/)"
+
+          if [ "$status" != "200" ]; then
+            echo "Expected frontend HTTP 200 but received $status."
+            exit 1
+          fi
+
+      - name: Verify nginx API proxy and authentication
+        run: |
+          status="$(curl --silent --show-error --output /tmp/dashboard-response.txt --write-out '%{http_code}' 'http://localhost:8080/api/dashboard?month=1&year=2026')"
+
+          if [ "$status" != "401" ]; then
+            echo "Expected proxied dashboard request to return HTTP 401 but received $status."
+            cat /tmp/dashboard-response.txt
+            exit 1
+          fi
+
+      - name: Show Docker diagnostics
+        if: failure()
+        run: |
+          docker compose --profile app ps --all || true
+          docker compose --profile app logs --no-color --timestamps smart-expense-postgres migrations api frontend || true
+
+      - name: Tear down Docker stack
+        if: always()
+        run: docker compose --profile app down --volumes --remove-orphans || true
