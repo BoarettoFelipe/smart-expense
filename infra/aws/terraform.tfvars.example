@@ -1,0 +1,17 @@
+aws_region         = "us-east-1"
+ec2_instance_type   = "t3.micro"
+db_instance_class   = "db.t3.micro"
+db_engine_version  = "18"
+db_name            = "smartexpense"
+db_username        = "smartexpense"
+monthly_budget_usd = 5
+budget_alert_email = null
+
+# Supply db_password and jwt_signing_key through TF_VAR_ environment variables
+# or a protected, untracked var-file outside any synced directory.
+# No example secret values are provided here.
+
+# If GitHub OIDC already exists in this AWS account, reuse its ARN.
+# github_oidc_provider_arn = "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com"
+
+common_tags = {}
