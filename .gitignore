@@ -14,3 +14,19 @@ AGENTS.md
 .env
 .env.*
 !.env.example
+
+# Terraform local state, inputs, plans, and tooling
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc

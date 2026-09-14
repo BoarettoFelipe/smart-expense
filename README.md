@@ -98,3 +98,10 @@ pushes to `main`. It validates the Release backend build and complete test suite
 frontend lint and production build, and an isolated full-stack Docker smoke test.
 CI uses disposable local-only database and JWT values and does not deploy or
 publish container images.
+
+## Temporary AWS infrastructure
+
+The [Terraform configuration in infra/aws](infra/aws/README.md) describes a
+temporary EC2/RDS demo with ECR, SSM, GitHub OIDC, and budget alerts. It does not
+deploy the application or add CD. Review the setup, state/secret storage, costs,
+and mandatory `terraform destroy` instructions before provisioning anything.
