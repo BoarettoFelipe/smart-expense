@@ -1,0 +1,60 @@
+name: smart-expense-aws
+
+x-runtime: &runtime
+  environment:
+    ASPNETCORE_ENVIRONMENT: Production
+  env_file:
+    - path: ${RUNTIME_ENV_FILE:?RUNTIME_ENV_FILE is required}
+      format: raw
+  volumes:
+    - type: bind
+      source: ${RDS_CA_FILE:?RDS_CA_FILE is required}
+      target: /run/rds-ca.pem
+      read_only: true
+      bind:
+        create_host_path: false
+
+services:
+  migrations:
+    <<: *runtime
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/smart-expense-api:${IMAGE_TAG:?IMAGE_TAG is required}-migrations
+    profiles: ["tools"]
+    restart: "no"
+    logging:
+      driver: none
+
+  api:
+    <<: *runtime
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/smart-expense-api:${IMAGE_TAG:?IMAGE_TAG is required}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 10s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  frontend:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/smart-expense-frontend:${IMAGE_TAG:?IMAGE_TAG is required}
+    ports:
+      - "80:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 5s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
