@@ -1,8 +1,76 @@
-# First manual AWS deployment
+# AWS deployment: manual and continuous
 
 Preparation only: no push, SSM command, deployment, or Terraform change is
 performed by adding these files. The commands below are for a later explicitly
-approved deployment. No Git operations or CD workflow are required.
+approved deployment. The manual path remains available alongside CD.
+
+## Continuous deployment
+
+`.github/workflows/ci.yml` validates PRs and pushes to main. Only a push to
+`refs/heads/main`, after backend, frontend and Docker smoke all succeed, runs
+the `deploy` job. PR deployment is skipped. No Environment, workflow_run or
+pull_request_target is used. Main runs are not automatically cancelled, and
+deployment concurrency uses a stable group with cancel-in-progress false.
+GitHub concurrency is not a FIFO queue: pending runs can be replaced and order
+is not guaranteed. Check the deployed SHA if several merges arrive together.
+The EC2 lock also rejects concurrent manual deployments. Do not manually cancel
+an active deploy: SSM can continue after the runner stops.
+
+Before merging, create these **Repository Variables** (Settings -> Secrets and
+variables -> Actions -> Variables), not Secrets:
+
+| Variable | Current value |
+| --- | --- |
+| AWS_ACCOUNT_ID | 739275443630 |
+| AWS_DEPLOY_ROLE_ARN | arn:aws:iam::739275443630:role/smart-expense-demo-github-deploy |
+| EC2_INSTANCE_ID | i-0604d67bb952209ae |
+| EC2_PUBLIC_IP | 13.217.142.254 |
+| RDS_HOST | smart-expense-demo.czwoaawu87e4.us-east-1.rds.amazonaws.com |
+
+The job has only contents:read and id-token:write. Official actions are
+checkout@v7.0.1 (persist-credentials false), configure-aws-credentials@v6.3.0,
+and amazon-ecr-login@v2 (password masking enabled). OIDC exchanges a GitHub token
+for temporary role credentials; no AWS access keys or application secrets belong
+in GitHub. The existing IAM trust requires audience sts.amazonaws.com and subject
+`repo:BoarettoFelipe@135382716/smart-expense@1331218846:ref:refs/heads/main`.
+Do not add an Environment without deliberately revisiting that trust policy.
+
+The job checks out the triggering SHA, builds linux/amd64 using existing targets,
+and publishes API:<SHA>, API:<SHA>-migrations and frontend:<SHA>. No latest tag.
+All three pushes must succeed before SSM submission. SHA naming is an operational
+immutability convention, not ECR enforcement: tags remain mutable and rerunning
+the same commit can rebuild different base images. No Terraform is changed here.
+
+The runner creates non-secret deployment.env and payload in RUNNER_TEMP, then
+calls deploy-via-ssm.ps1 with explicit InstanceId, -Execute and -Wait, without
+-Profile. Only EC2 reads the SecureStrings. The sender verifies STS account,
+sends AWS-RunShellScript, then polls GetCommandInvocation every five seconds
+(maximum 1200 seconds; remote execution timeout 900). Eventual-consistency/API
+errors retry until that deadline. Only Status/ResponseCode are requested; remote
+stdout/stderr is not published. Success requires Success and response code 0.
+All terminal failures or monitor timeout fail the job; no fallback deployment.
+
+After successful SSM completion, external checks require GET / = 200 and GET
+/api/transactions without a token = 401, with 12 bounded attempts per endpoint.
+Definitive failures fail the job. Runner temporary files are removed always;
+the official ECR action cleans up its login after the job.
+
+Identify a release by the run's SHA and SSM CommandId, and by IMAGE_TAG in the
+root-only remote release deployment.env or container **image names only**.
+Never dump container environment metadata. On failure, check the failed step
+and SSM Status/ResponseCode. If monitoring timed out, check that same command
+before retrying. Investigate migrations privately with sanitized diagnostics;
+there is no automatic schema rollback. The current Terraform role permits ECR
+upload, SendCommand to the demo EC2/AWS-RunShellScript, and GetCommandInvocation.
+It does not permit GitHub to read SecureStrings or list/describe SSM instances;
+the workflow does not require those operations. Applied IAM has not been queried
+by this implementation. Update Variables if the instance/IP/RDS changes.
+
+Manual deployment remains the command below with explicit -Profile; add -Wait
+to require completion locally. Omitting -Profile now uses ambient AWS credentials
+or the CLI default profile. Preparation without -Execute never contacts AWS.
+Run `pwsh -File infra/aws/deployment/test_sender.ps1` for mocked offline sender
+tests. This change does not execute a workflow, image push or remote command.
 
 ## Architecture and release contract
 

@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
 
@@ -57,7 +57,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
 
@@ -96,9 +96,16 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
+
+      - name: Test deployment helpers offline
+        shell: pwsh
+        run: |
+          ./infra/aws/deployment/test_sender.ps1
+          python3 -B -m unittest discover -s infra/aws/deployment -p 'test_*.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Deployment helper tests failed.' }
 
       - name: Build Docker images
         run: docker compose --profile app build
@@ -190,3 +197,104 @@ jobs:
       - name: Tear down Docker stack
         if: always()
         run: docker compose --profile app down --volumes --remove-orphans || true
+
+  deploy:
+    name: Deploy AWS demo
+    needs: [backend, frontend, docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: smart-expense-demo-deployment
+      cancel-in-progress: false
+    env:
+      AWS_REGION: us-east-1
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+      AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+      EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+      EC2_PUBLIC_IP: ${{ vars.EC2_PUBLIC_IP }}
+      RDS_HOST: ${{ vars.RDS_HOST }}
+      IMAGE_TAG: ${{ github.sha }}
+
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Validate deployment variables and prepare non-secret config
+        shell: pwsh
+        run: |
+          if ($env:AWS_ACCOUNT_ID -notmatch '^[0-9]{12}$' -or
+              $env:AWS_DEPLOY_ROLE_ARN -ne "arn:aws:iam::$($env:AWS_ACCOUNT_ID):role/smart-expense-demo-github-deploy" -or
+              $env:EC2_INSTANCE_ID -notmatch '^i-[0-9a-f]+$' -or
+              $env:EC2_PUBLIC_IP -notmatch '^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$' -or
+              $env:RDS_HOST -notmatch '^[A-Za-z0-9.-]+\.us-east-1\.rds\.amazonaws\.com$' -or
+              $env:IMAGE_TAG -notmatch '^[0-9a-f]{40}$') {
+            throw 'Missing or invalid Repository Variables/release SHA.'
+          }
+          $registry = "$($env:AWS_ACCOUNT_ID).dkr.ecr.us-east-1.amazonaws.com"
+          "ECR_REGISTRY=$registry" >> $env:GITHUB_ENV
+          $config = @(
+            'AWS_REGION=us-east-1', "ECR_REGISTRY=$registry", "IMAGE_TAG=$env:IMAGE_TAG",
+            "RDS_HOST=$env:RDS_HOST", 'RDS_PORT=5432', 'RDS_DATABASE=smartexpense',
+            'RDS_USERNAME=smartexpense', 'DB_PASSWORD_PARAMETER=/smart-expense/demo/db-password',
+            'JWT_SIGNING_KEY_PARAMETER=/smart-expense/demo/jwt-signing-key'
+          ) -join "`n"
+          [IO.File]::WriteAllText((Join-Path $env:RUNNER_TEMP 'deployment.env'), $config)
+
+      - name: Assume deployment role via OIDC
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+          role-session-name: SmartExpense-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Log in to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: 'true'
+
+      - name: Build release images
+        run: |
+          docker build --platform linux/amd64 --target api -f backend/Dockerfile -t "$ECR_REGISTRY/smart-expense-api:$IMAGE_TAG" .
+          docker build --platform linux/amd64 --target migrations -f backend/Dockerfile -t "$ECR_REGISTRY/smart-expense-api:$IMAGE_TAG-migrations" .
+          docker build --platform linux/amd64 --target runtime -f frontend/Dockerfile -t "$ECR_REGISTRY/smart-expense-frontend:$IMAGE_TAG" frontend
+
+      - name: Publish complete release
+        run: |
+          docker push "$ECR_REGISTRY/smart-expense-api:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/smart-expense-api:$IMAGE_TAG-migrations"
+          docker push "$ECR_REGISTRY/smart-expense-frontend:$IMAGE_TAG"
+
+      - name: Deploy via SSM and require successful completion
+        shell: pwsh
+        run: |
+          ./infra/aws/deployment/deploy-via-ssm.ps1 -ConfigPath "$env:RUNNER_TEMP/deployment.env" -ParametersPath "$env:RUNNER_TEMP/ssm-deployment.json" -InstanceId $env:EC2_INSTANCE_ID -Execute -Wait
+
+      - name: Verify external frontend and authenticated proxy
+        run: |
+          verify_status() {
+            for attempt in $(seq 1 12); do
+              status=$(curl --silent --show-error --connect-timeout 5 --max-time 10 --output /dev/null --write-out '%{http_code}' "http://$EC2_PUBLIC_IP$1") || status=000
+              if [ "$status" = "$2" ]; then return 0; fi
+              sleep 5
+            done
+            echo "External smoke failed: $1 expected $2, received $status."
+            return 1
+          }
+          verify_status / 200
+          verify_status /api/transactions 401
+
+      - name: Clean runner deployment artifacts
+        if: always()
+        shell: pwsh
+        run: |
+          foreach ($name in @('deployment.env', 'ssm-deployment.json')) {
+            Remove-Item -LiteralPath (Join-Path $env:RUNNER_TEMP $name) -Force -ErrorAction SilentlyContinue
+          }
