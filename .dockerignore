@@ -10,4 +10,10 @@
 **/*.user
 **/*.suo
 frontend/
+infra/
+**/.terraform/
+**/*.tfstate*
+**/*.tfvars
+**/*.tfvars.json
+**/*.tfplan
 backend/tests/
